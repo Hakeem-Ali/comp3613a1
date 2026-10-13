@@ -228,11 +228,21 @@ def export_report(
             "(runs student-judge -> docs/judge.md), then re-run this command."
         )
     app_url, logins, missing = _marker_access(markdown)
+    submission_details, missing_details = _submission_details(markdown)
+    missing.extend(missing_details)
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     pdf = _new_pdf(bool(missing))
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-        cover = _cover_html(clean_name, clean_id, app_url, logins, integrity, missing)
+        cover = _cover_html(
+            clean_name,
+            clean_id,
+            app_url,
+            logins,
+            submission_details,
+            integrity,
+            missing,
+        )
         body = _markdown_to_html(markdown, src.parent, Path(tmp))
         appendix = _markdown_to_html(
             appendix_markdown(transcripts),
@@ -448,7 +458,6 @@ def replace_competency_section(markdown: str, judge_markdown: str) -> str:
     section = (
         "<!-- student-judge:competency -->\n"
         f"{COMPETENCY_HEADING}\n\n"
-        "Filled by Guide from the student-judge run when this report was built.\n\n"
         f"{body}\n"
     )
     text = markdown.replace("\r\n", "\n").replace("\r", "\n")
@@ -582,6 +591,7 @@ def _cover_html(
     student_id: str,
     app_url: str,
     logins: str,
+    submission_details: dict[str, str],
     integrity: IntegrityResult,
     missing: list[str],
 ) -> str:
@@ -597,6 +607,26 @@ def _cover_html(
         ("Student ID", html_lib.escape(student_id), False),
         ("Deployed app", html_lib.escape(app_url), False),
         ("Logins", login_html, False),
+        (
+            "GitHub repository",
+            html_lib.escape(submission_details.get("GitHub repository", "Not yet")),
+            "GitHub repository" in missing,
+        ),
+        (
+            "YouTube URL",
+            html_lib.escape(submission_details.get("YouTube URL", "Not yet")),
+            "YouTube URL" in missing,
+        ),
+        (
+            "Agent used",
+            html_lib.escape(submission_details.get("Agent used", "Not yet")),
+            "agent used" in missing,
+        ),
+        (
+            "Account email",
+            html_lib.escape(submission_details.get("Account email", "Not yet")),
+            "account email" in missing,
+        ),
         ("Skill integrity", integrity_value, not integrity.ok),
     ]
     cells = []
@@ -675,6 +705,38 @@ def _marker_access(markdown: str) -> tuple[str, str, list[str]]:
     else:
         login_text = "\n".join(login_lines)
     return app_url, login_text, missing
+
+
+def _submission_details(markdown: str) -> tuple[dict[str, str], list[str]]:
+    section = _section(markdown, "submission details")
+    labels = {
+        "github repository": "GitHub repository",
+        "youtube url": "YouTube URL",
+        "agent used": "Agent used",
+        "account email": "Account email",
+    }
+    details: dict[str, str] = {}
+    missing: list[str] = []
+    for line in section.splitlines():
+        cleaned = re.sub(r"^\s*[-*]\s*", "", line.strip())
+        label, separator, value = cleaned.partition(":")
+        display_label = labels.get(label.strip().lower())
+        if separator and display_label and value.strip():
+            details[display_label] = re.sub(
+                r"\[([^\]]+)\]\((https?://[^)]+)\)",
+                r"\1 — \2",
+                value.strip(),
+            )
+
+    for display_label, missing_label in (
+        ("GitHub repository", "GitHub repository"),
+        ("YouTube URL", "YouTube URL"),
+        ("Agent used", "agent used"),
+        ("Account email", "account email"),
+    ):
+        if not details.get(display_label):
+            missing.append(missing_label)
+    return details, missing
 
 
 def _markdown_to_html(markdown: str, base: Path, tmp: Path) -> str:

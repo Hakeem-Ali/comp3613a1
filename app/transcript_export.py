@@ -151,8 +151,6 @@ def merge_transcripts_section(
         )
     section = (
         f"{TRANSCRIPTS_HEADING}\n\n"
-        "Filled when the Guide builds the report: the agent writes chat markdown "
-        "into `docs/transcripts/`; `python manage.py report` packages them.\n\n"
         f"{detail}"
     )
 
