@@ -1,9 +1,43 @@
 {% extends "authenticated-base.html" %}
-{% block title %}Admin{% endblock %}
+{% block title %}Administrator Dashboard{% endblock %}
 
 {% block subpage_content %}
-<div class="container-fluid py-2">
-  <h1 class="h4 mb-2">Admin</h1>
-  <p class="text-muted mb-0">Admin workflow screens replace this shell in Phase 5 implement.</p>
+<div class="rewards-shell">
+  <h1 class="page-title">Volunteer Review</h1>
+  <p class="page-subtitle">Approve or reject student submissions and confirm milestone eligibility.</p>
+
+  <div class="data-card mb-4">
+    <h2 class="h4 mb-3">Pending submissions</h2>
+    {% if pending_submissions %}
+    <div class="submission-list">
+      {% for submission in pending_submissions %}
+      {% set student = student_lookup.get(submission.id) %}
+      <div class="submission-item">
+        <div>
+          <div class="fw-bold text-dark">{{ student.username if student else 'Student' }} — {{ submission.organization }}</div>
+          <small class="text-muted">{{ submission.hours }} hours · {{ submission.submission_date.strftime('%b %d, %Y') }}</small>
+          {% if submission.description %}
+          <div class="text-muted mt-1">{{ submission.description }}</div>
+          {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <form method="POST" action="{{ url_for('review_submission_action', submission_id=submission.id) }}">
+            <input type="hidden" name="decision" value="approve">
+            <textarea class="form-control mb-2" name="review_notes" rows="2" placeholder="Review notes"></textarea>
+            <button class="btn btn-primary" type="submit">Approve</button>
+          </form>
+          <form method="POST" action="{{ url_for('review_submission_action', submission_id=submission.id) }}">
+            <input type="hidden" name="decision" value="reject">
+            <input type="hidden" name="review_notes" value="Needs more information or does not meet criteria.">
+            <button class="btn btn-secondary" type="submit">Reject</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No submissions are waiting for review.</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

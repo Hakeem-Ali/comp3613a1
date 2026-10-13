@@ -1,9 +1,124 @@
 {% extends "authenticated-base.html" %}
-{% block title %}Home{% endblock %}
+{% block title %}Dashboard{% endblock %}
 
 {% block subpage_content %}
-<div class="container-fluid py-2">
-  <h1 class="h4 mb-2">Home</h1>
-  <p class="text-muted mb-0">Workflow screens replace this shell in Phase 5 implement.</p>
+<div class="rewards-shell">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+    <div>
+      <h1 class="page-title">Your Progress</h1>
+      <p class="page-subtitle">Keep making a difference. Track your volunteer hours and unlock milestones.</p>
+    </div>
+    <div class="status-badge status-approved">{{ approved_hours }} approved hours</div>
+  </div>
+
+  <div class="metric-grid mb-4">
+    <div class="metric-card">
+      <small>Total approved hours</small>
+      <h3>{{ approved_hours }}</h3>
+    </div>
+    <div class="metric-card">
+      <small>Next milestone</small>
+      <h3>{{ next_milestone }}</h3>
+    </div>
+    <div class="metric-card">
+      <small>Rewards available</small>
+      <h3>{{ awards|length }}</h3>
+    </div>
+  </div>
+
+  <div class="data-card mb-4" id="submit-hours">
+    <h2 class="h4 mb-3">Submit Volunteer Hours</h2>
+    <form method="POST" action="{{ url_for('submit_hours_action') }}">
+      <div class="form-grid">
+        <div>
+          <label class="form-label" for="organization">Organization / Location</label>
+          <input class="form-control" id="organization" name="organization" placeholder="e.g. Community Food Bank" required>
+        </div>
+        <div>
+          <label class="form-label" for="hours">Hours volunteered</label>
+          <input class="form-control" id="hours" name="hours" type="number" min="0.5" step="0.5" placeholder="e.g. 4" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="description">Description</label>
+          <textarea class="form-control" id="description" name="description" rows="3" placeholder="Briefly describe your volunteer work."></textarea>
+        </div>
+      </div>
+      <div class="mt-3 d-flex justify-content-end">
+        <button class="btn btn-primary" type="submit">Submit</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="data-card mb-4" id="progress">
+    <h2 class="h4 mb-3">Milestones</h2>
+    <div class="milestone-list">
+      {% for milestone in milestones or [] %}
+      {% set earned = approved_hours >= milestone.required_hours %}
+      {% set progress = ((approved_hours / milestone.required_hours) * 100) if milestone.required_hours else 0 %}
+      <div class="milestone-item">
+        <div class="milestone-meta">
+          <div class="status-badge {{ 'status-earned' if earned else 'status-locked' }}">🏅</div>
+          <div>
+            <div class="fw-bold text-dark">{{ milestone.name }}</div>
+            <small class="text-muted">{{ milestone.required_hours }} hours</small>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          {% if earned %}
+          <span class="status-badge status-earned">Earned</span>
+          {% elif approved_hours >= milestone.required_hours - 10 and approved_hours < milestone.required_hours %}
+          <span class="status-badge status-progress">In progress</span>
+          {% else %}
+          <span class="status-badge status-locked">Locked</span>
+          {% endif %}
+        </div>
+      </div>
+      {% else %}
+      <div class="text-muted">No milestone data is available yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="data-card mb-4" id="awards">
+    <h2 class="h4 mb-3">Available Rewards</h2>
+    <div class="award-list">
+      {% for award in awards %}
+      {% set eligible = approved_hours >= award.required_hours %}
+      <div class="award-item">
+        <div class="award-meta">
+          <div class="status-badge status-locked">🎁</div>
+          <div>
+            <div class="fw-bold text-dark">{{ award.name }}</div>
+            <small class="text-muted">{{ award.required_hours }} hours required</small>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          {% if eligible %}
+          <form method="POST" action="{{ url_for('redeem_award_action', award_id=award.id) }}">
+            <button class="btn btn-primary" type="submit">Redeem</button>
+          </form>
+          {% else %}
+          <span class="status-badge status-locked">Not eligible</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="data-card">
+    <h2 class="h4 mb-3">Submission Status</h2>
+    {% if latest_submission %}
+    <div class="submission-item">
+      <div>
+        <div class="fw-bold text-dark">{{ latest_submission.organization }}</div>
+        <small class="text-muted">{{ latest_submission.hours }} hours · {{ latest_submission.submission_date.strftime('%b %d, %Y') }}</small>
+      </div>
+      <span class="status-badge {{ 'status-approved' if latest_submission.status == 'approved' else 'status-pending' if latest_submission.status == 'pending' else 'status-rejected' }}">{{ latest_submission.status|title }}</span>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No volunteer submissions yet. Submit the first one to begin tracking your impact.</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

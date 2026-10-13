@@ -15,10 +15,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.database import ensure_db_and_tables
+    from app.database import ensure_db_and_tables, seed_demo_data
 
     # First boot on Render often races the free Postgres instance.
     ensure_db_and_tables()
+    seed_demo_data()
     yield
 
 

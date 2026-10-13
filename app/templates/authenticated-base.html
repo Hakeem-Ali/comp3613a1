@@ -4,7 +4,7 @@
 <style>
     body {
         overflow-x: hidden;
-        background: #f4f6f8;
+        background: #eef4fb;
     }
 
     #wrapper {
@@ -13,35 +13,41 @@
     }
 
     #sidebar {
-        min-width: 250px;
-        max-width: 250px;
+        min-width: 240px;
+        max-width: 240px;
         min-height: 100vh;
         transition: all 0.3s;
-        background: var(--brand-sidebar);
-        color: #fff;
+        background: #f8fafc;
+        color: #16314e;
+        border-right: 1px solid #dfe9f3;
     }
 
     #sidebar.collapsed {
-        margin-left: -250px;
+        margin-left: -240px;
+    }
+
+    #sidebar .nav-item {
+        margin-bottom: 0.25rem;
     }
 
     #sidebar .nav-link {
-        color: var(--brand-sidebar-text);
-        font-weight: 500;
+        color: #38506d;
+        font-weight: 600;
+        border-radius: 12px;
+        padding: 0.75rem 0.9rem;
     }
 
     #sidebar .nav-link:hover,
     #sidebar .nav-link.active {
-        color: #fff;
-        background-color: color-mix(in srgb, var(--brand-accent) 55%, #000);
-        border-radius: 0.5rem;
+        color: #0f2748;
+        background: #dfeeff;
     }
 
     #sidebar .brand-wordmark {
-        color: #fff;
-        font-size: 1.25rem;
-        text-align: center;
-        margin: 1rem 0 1.5rem;
+        color: #113a72;
+        font-size: 1.6rem;
+        margin: 0.75rem 0 1.25rem;
+        font-weight: 700;
     }
 
     #content {
@@ -50,11 +56,15 @@
         transition: all 0.3s;
         display: flex;
         flex-direction: column;
-        background-color: #f4f6f8;
+        background-color: #f4f8fc;
     }
 
-    .navbar {
-        border-bottom: 1px solid #dee2e6;
+    .topbar {
+        background: rgba(255,255,255,0.9);
+        border: 1px solid #e0eaf5;
+        border-radius: 18px;
+        padding: 0.9rem 1.1rem;
+        box-shadow: 0 10px 28px rgba(16, 54, 110, 0.08);
     }
 </style>
 {% block additional_styles %}{% endblock %}
@@ -63,14 +73,31 @@
 {% block content %}
 <div id="wrapper">
     <nav id="sidebar" class="p-3 d-flex flex-column vh-100">
-        <div class="brand-wordmark">FastStarter</div>
+        <div class="brand-wordmark">Campus Rewards</div>
 
         <ul class="nav nav-pills flex-column gap-2 flex-grow-1">
             <li class="nav-item">
-                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/app') }}"
-                   href="{{ url_for('user_home_view') }}">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/app') }}" href="{{ url_for('user_home_view') }}">
                     <span class="material-symbols-outlined me-2">home</span>
-                    Home
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/app') and 'submit' in request.url.path }}" href="{{ url_for('user_home_view') }}#submit-hours">
+                    <span class="material-symbols-outlined me-2">assignment_turned_in</span>
+                    Submit Hours
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/app') and 'progress' in request.url.path }}" href="{{ url_for('user_home_view') }}#progress">
+                    <span class="material-symbols-outlined me-2">bar_chart</span>
+                    Progress
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/app') and 'redeem' in request.url.path }}" href="{{ url_for('user_home_view') }}#awards">
+                    <span class="material-symbols-outlined me-2">card_giftcard</span>
+                    Redeem Awards
                 </a>
             </li>
             <li class="nav-item mt-auto">
@@ -83,16 +110,17 @@
     </nav>
 
     <div id="content">
-        <nav class="navbar navbar-expand-lg bg-white mb-4 px-3 rounded-3 shadow-sm">
+        <nav class="topbar navbar navbar-expand-lg mb-4 d-flex align-items-center">
             <button class="btn btn-outline-secondary" id="menu-toggle" type="button">
                 <span class="material-symbols-outlined md-dark">menu</span>
             </button>
             <div class="ms-auto d-flex align-items-center gap-3">
-                <span class="fw-semibold">Welcome, {{ user.username }}</span>
+                <span class="rounded-pill bg-light text-primary px-3 py-2 small fw-semibold">{{ user.role|replace('_', ' ')|title }}</span>
+                <span class="fw-semibold text-dark">{{ user.username }}</span>
             </div>
         </nav>
 
-        <div class="row">
+        <div class="row mb-3">
             <div class="col-12">
                 {% for message in get_flashed_messages(request) %}
                 <div class="alert alert-{{ message.type }}" role="alert">{{ message.message }}</div>
@@ -105,9 +133,12 @@
 </div>
 
 <script>
-    document.getElementById("menu-toggle").addEventListener("click", function () {
-        document.getElementById("sidebar").classList.toggle("collapsed");
-    });
+    const menuToggle = document.getElementById("menu-toggle");
+    if (menuToggle) {
+        menuToggle.addEventListener("click", function () {
+            document.getElementById("sidebar").classList.toggle("collapsed");
+        });
+    }
 </script>
 {% block subpage_scripts %}{% endblock %}
 {% endblock %}

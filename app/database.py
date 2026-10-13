@@ -4,9 +4,13 @@ import time
 from contextlib import contextmanager
 
 from sqlalchemy.exc import DBAPIError, OperationalError, ProgrammingError
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import SQLModel, Session, create_engine, select
 
 from app.config import get_settings
+from app.models.rewards import Award, Milestone
+from app.repositories.user import UserRepository
+from app.schemas.user import AdminCreate, RegularUserCreate
+from app.utilities.security import encrypt_password
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +103,59 @@ def ensure_db_and_tables(
             time.sleep(delay_seconds * attempt)
     if last is not None:
         raise last
+
+
+def seed_demo_data() -> None:
+    """Ensure the Campus Rewards demo users and award metadata exist."""
+    with Session(engine) as session:
+        repo = UserRepository(session)
+        demo_users = [
+            ("bob", "bob@example.com", "bobpass", "regular_user"),
+            ("admin", "admin@example.com", "adminpass", "admin"),
+        ]
+        for username, email, password, role in demo_users:
+            if repo.get_by_username(username) is None:
+                payload_cls = AdminCreate if role == "admin" else RegularUserCreate
+                repo.create(payload_cls(username=username, email=email, password=encrypt_password(password), role=role))
+
+        milestone_seed = [
+            ("Bronze Contributor", 10, "First volunteer milestone", "milestone"),
+            ("Silver Contributor", 40, "Steady campus impact", "milestone"),
+            ("Gold Contributor", 80, "Major campus contribution", "trophy"),
+            ("Platinum Contributor", 120, "Top campus volunteer", "workspace_premium"),
+        ]
+        for index, (name, required_hours, description, icon) in enumerate(milestone_seed, start=1):
+            existing = session.exec(select(Milestone).where(Milestone.name == name)).one_or_none()
+            if existing is None:
+                session.add(
+                    Milestone(
+                        name=name,
+                        required_hours=required_hours,
+                        description=description,
+                        badge_icon=icon,
+                        display_order=index,
+                    )
+                )
+
+        award_seed = [
+            ("Wireless Headphones", 75, "Perfect for study sessions and campus life.", "headphones", True),
+            ("Gift Card", 50, "Flexible rewards for everyday essentials.", "card_giftcard", True),
+            ("Campus T-Shirt", 25, "Show your campus pride.", "checkroom", True),
+        ]
+        for name, required_hours, description, icon, active in award_seed:
+            existing = session.exec(select(Award).where(Award.name == name)).one_or_none()
+            if existing is None:
+                session.add(
+                    Award(
+                        name=name,
+                        required_hours=required_hours,
+                        description=description,
+                        icon=icon,
+                        active=active,
+                    )
+                )
+
+        session.commit()
 
 
 def recover_if_uninitialized(exc: BaseException) -> bool:
